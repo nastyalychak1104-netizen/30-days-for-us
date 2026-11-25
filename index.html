@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>30 дней для нас</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fff0f3;
+  color: #62434e;
+}
+header {
+  text-align: center;
+  padding: 30px 15px;
+  background: #f8dce5;
+}
+h1 { color: #a65c77; }
+h2 { color: #a65c77; }
+.container {
+  max-width: 650px;
+  margin: auto;
+  padding: 16px;
+}
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 15px #d9a9ba30;
+}
+button {
+  background: #d88da7;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 15px;
+  cursor: pointer;
+}
+input, textarea, select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid #eccbd6;
+  border-radius: 12px;
+  font-size: 16px;
+}
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.day {
+  background: #f9e4eb;
+  color: #95536b;
+}
+.day.active {
+  background: #c96e90;
+  color: white;
+}
+.day.done {
+  border: 2px solid #a65c77;
+}
+.counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.category {
+  padding: 14px 0;
+  border-bottom: 1px solid #f3dce4;
+}
+.hidden { display: none; }
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+</style>
+</head> <body>
+<header>
+  <h1>♡ 30 дней для нас ♡</h1>
+  <p>Маленькие шаги навстречу друг другу</p>
+</header>
+
+<div class="container">
+
+<section id="login" class="card">
+  <h2>Твой личный дневник</h2>
+  <p>Пространство для твоих чувств</p>
+  <input id="email" type="email" placeholder="Электронная почта">
+  <input id="password" type="password" placeholder="Пароль">
+  <button onclick="signIn()">Войти ♡</button>
+  <p id="loginMessage"></p>
+</section>
+
+<div id="app" class="hidden">
+
+<nav>
+  <button onclick="showPage('diary')">Дневник</button>
+  <button onclick="showPage('statistics')">Статистика</button>
+  <button onclick="showPage('together')">Мы вдвоём</button>
+  <button onclick="signOut()">Выйти</button>
+</nav>
+
+<section id="diary">
+
+<div class="card">
+  <h2>Наши 30 дней</h2>
+  <div id="calendar" class="calendar"></div>
+</div>
+
+<div class="card">
+  <h2 id="dayTitle">Мой день</h2>
+  <p id="dateLabel"></p>
+  <h3>Вопрос дня ♡</h3>
+  <p id="dailyQuestion"></p>
+  <textarea id="reflection" placeholder="Мои мысли..."></textarea>
+</div>
+
+<div class="card">
+  <h2>Что сегодня происходило?</h2>
+  <div id="categories"></div>
+</div>
+
+<div class="card">
+  <h2>Оценка отношений</h2>
+  <p>Как я оцениваю наши отношения сегодня?</p>
+  <input id="rating" type="range" min="1" max="10" value="5" oninput="document.getElementById('ratingValue').textContent=this.value">
+  <h2><span id="ratingValue">5</span> / 10</h2>
+</div>
+
+<div class="card">
+  <h2>Моё настроение</h2>
+  <select id="mood">
+    <option value="5">😍 Счастье</option>
+    <option value="4">😊 Радость</option>
+    <option value="3">😌 Спокойствие</option>
+    <option value="2">😔 Грусть</option>
+    <option value="1">😢 Очень тяжело</option>
+  </select>
+  <h3>Личные заметки</h3>
+  <textarea id="notes" placeholder="Что я сегодня чувствую?"></textarea>
+  <button onclick="saveDay()">Сохранить день ♡</button>
+  <p id="saveMessage"></p>
+</div>
+
+</section>
+
+<section id="statistics" class="hidden">
+  <div class="card">
+    <h2>Статистика отношений</h2>
+    <select id="period" onchange="renderStats()">
+      <option value="7">За неделю</option>
+      <option value="30">За 30 дней</option>
+    </select>
+    <div id="stats"></div>
+  </div>
+  <div class="card">
+    <h2>График настроения</h2>
+    <canvas id="moodChart" width="300" height="200" style="width:100%"></canvas>
+  </div>
+</section>
+
+<section id="together" class="hidden">
+  <div class="card">
+    <h2>Мы вдвоём ♡</h2>
+    <p>Сравнение результатов доступно только при согласии обоих партнёров.</p>
+    <label>
+      <input type="checkbox" id="consent" style="width:auto">
+      Я согласна/согласен поделиться статистикой
+    </label>
+    <p><button onclick="saveConsent()">Сохранить согласие</button></p>
+    <button onclick="loadShared()">Сравнить результаты</button>
+    <div id="sharedResults"></div>
+  </div>
+</section>
+
+</div>
+</div>  <script>
+const db = supabase.createClient(
+  'https://peimwhumtby povntwbta.supabase.co'.replace(/ /g,''),
+  'sb_publishable_yNxQKNeuw9I36t17bJq9cw_IMmXrlVQ'
+);
+
+const $ = id => document.getElementById(id);
+
+const categories = [
+  '💌 Комплименты',
+  '💋 Объятия и поцелуи',
+  '🌷 Забота и внимание',
+  '✨ Проявление инициативы',
+  '🫶 Совместное время',
+  '💬 Совместные решения и советы',
+  '🏠 Помощь в быту',
+  '🙏 Благодарность',
+  '🤍 Поддержка',
+  '❤️ Интимная близость',
+  '🥺 Обиды и их причины',
+  '💔 Ссоры и конфликты',
+  '🕰 Возвращение к старым обидам',
+  '🔐 Ревность и доверие',
+  '🛡 Нарушение личных границ',
+  '🕊 Извинения',
+  '🤝 Примирение',
+  '🌱 Выполнение обещаний',
+  '💗 Ощущение любви',
+  '🌸 Эмоциональное состояние'
+];
+
+const questions = [
+  'Что сегодня заставило меня почувствовать любовь?',
+  'Чего мне сегодня не хватало?',
+  'За что я благодарна своему партнёру?',
+  'Что сегодня сделало меня счастливее?',
+  'Чувствую ли я себя услышанной?',
+  'Что я могу сделать для наших отношений?',
+  'Каким был наш совместный день?',
+  'Могу ли я свободно говорить о чувствах?',
+  'Что меня сегодня расстроило?',
+  'Как партнёр проявил заботу?',
+  'Чувствую ли я поддержку?',
+  'Что я хотела бы изменить?',
+  'Было ли мне комфортно рядом с партнёром?',
+  'Как мы справлялись с разногласиями?',
+  'Чего мне хочется от наших отношений?',
+  'Как я сегодня проявила любовь?',
+  'Что помогло нам стать ближе?',
+  'Уважаем ли мы границы друг друга?',
+  'Что я боюсь сказать партнёру?',
+  'Какие моменты хочется запомнить?',
+  'Чувствую ли я доверие?',
+  'Что мы могли бы сделать вместе?',
+  'Как я чувствую себя после общения?',
+  'Что сегодня было особенно ценным?',
+  'Умеем ли мы слушать друг друга?',
+  'Какие мои потребности остаются без внимания?',
+  'Что изменилось за это время?',
+  'Какими я вижу наши отношения в будущем?',
+  'Что хорошего я заметила в партнёре?',
+  'Какие выводы я сделала за 30 дней?'
+];
+
+let user = null;
+let entries = {};
+let selectedDay = 0;
+let start = '';
+let answers = {};
+
+function localDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return ${y}-${m}-${d};
+}
+
+function dateForDay(day) {
+  const date = new Date(start+'T12:00:00');
+  date.setDate(date.getDate()+day);
+  return localDate(date);
+}
+
+function renderCategories() {
+  $('categories').replaceChildren();
+
+  categories.forEach((name,i)=>{
+    if(!answers[i]) {
+      answers[i]={count:0,comment:''};
+    }
+
+    const row=document.createElement('div');
+    row.className='category';
+
+    const title=document.createElement('strong');
+    title.textContent=name;
+
+    const counter=document.createElement('div');
+    counter.className='counter';
+
+    const minus=document.createElement('button');
+    minus.textContent='−';
+
+    const value=document.createElement('span');
+    value.textContent=answers[i].count;
+
+    const plus=document.createElement('button');
+    plus.textContent='+';
+
+    minus.onclick=()=>{
+      answers[i].count=Math.max(0,answers[i].count-1);
+      value.textContent=answers[i].count;
+    };
+
+    plus.onclick=()=>{
+      answers[i].count++;
+      value.textContent=answers[i].count;
+    };
+
+    const comment=document.createElement('textarea');
+    comment.placeholder='Комментарий...';
+    comment.value=answers[i].comment;
+    comment.oninput=()=>{
+      answers[i].comment=comment.value;
+    };
+
+    counter.append(minus,value,plus);
+    row.append(title,counter,comment);
+    $('categories').appendChild(row);
+  });
+}
+</script> <script>
+async function signIn(){
+  $('loginMessage').textContent='Входим...';
+
+  const {data,error}=await db.auth.signInWithPassword({
+    email:$('email').value.trim(),
+    password:$('password').value
+  });
+
+  if(error){
+    $('loginMessage').textContent=error.message;
+    return;
+  }
+
+  user=data.user;
+  await openApp();
+}
+
+async function signOut(){
+  await db.auth.signOut();
+  location.reload();
+}
+
+async function openApp(){
+  $('login').classList.add('hidden');
+  $('app').classList.remove('hidden');
+
+  const {data,error}=await db
+    .from('daily_entries')
+    .select('*')
+    .eq('user_id',user.id)
+    .order('entry_date');
+
+  if(error){
+    $('saveMessage').textContent=error.message;
+    return;
+  }
+
+  entries={};
+
+  (data||[]).forEach(row=>{
+    entries[row.entry_date]=row;
+  });
+
+  const key='start_'+user.id;
+
+  start=localStorage.getItem(key)
+    ||(data&&data.length?data[0].entry_date:null)
+    ||localDate(new Date());
+
+  localStorage.setItem(key,start);
+
+  selectedDay=Math.min(29,Math.max(0,
+    Math.round(
+      (new Date(localDate(new Date())+'T12:00:00')
+      -new Date(start+'T12:00:00'))/86400000
+    )
+  ));
+
+  openDay(selectedDay);
+}
+
+function renderCalendar(){
+  $('calendar').replaceChildren();
+
+  for(let i=0;i<30;i++){
+    const btn=document.createElement('button');
+    btn.className='day';
+    btn.textContent=i+1;
+
+    if(i===selectedDay){
+      btn.classList.add('active');
+    }
+
+    if(entries[dateForDay(i)]){
+      btn.classList.add('done');
+    }
+
+    btn.onclick=()=>openDay(i);
+    $('calendar').appendChild(btn);
+  }
+}
+
+function openDay(day){
+  selectedDay=day;
+
+  const date=dateForDay(day);
+  const entry=entries[date]||{};
+  const saved=entry.answers||{};
+
+  $('dayTitle').textContent='День '+(day+1)+' ♡';
+  $('dateLabel').textContent=date;
+  $('dailyQuestion').textContent=questions[day];
+
+  answers=JSON.parse(JSON.stringify(saved.categories||{}));
+
+  $('reflection').value=saved.reflection||'';
+  $('rating').value=saved.rating||5;
+  $('ratingValue').textContent=$('rating').value;
+  $('mood').value=entry.mood||3;
+  $('notes').value=entry.notes||'';
+  $('saveMessage').textContent='';
+
+  renderCalendar();
+  renderCategories();
+}
+
+async function saveDay(){
+  const date=dateForDay(selectedDay);
+
+  const row={
+    user_id:user.id,
+    entry_date:date,
+    answers:{
+      categories:answers,
+      reflection:$('reflection').value,
+      rating:Number($('rating').value)
+    },
+    mood:Number($('mood').value),
+    notes:$('notes').value
+  };
+
+  $('saveMessage').textContent='Сохраняем...';
+
+  let result;
+
+  if(entries[date]&&entries[date].id){
+    result=await db.from('daily_entries')
+      .update(row)
+      .eq('id',entries[date].id)
+      .eq('user_id',user.id)
+      .select()
+      .single();
+  }else{
+    result=await db.from('daily_entries')
+      .insert(row)
+      .select()
+      .single();
+  }
+
+  if(result.error){
+    $('saveMessage').textContent=result.error.message;
+    return;
+  }
+
+  entries[date]=result.data;
+
+  $('saveMessage').textContent='Сохранено ♡';
+  renderCalendar();
+}
+
+async function restoreSession(){
+  const {data}=await db.auth.getSession();
+
+  if(data.session){
+    user=data.session.user;
+    await openApp();
+  }
+}
+</script> <script>
+function showPage(page){
+  ['diary','statistics','together'].forEach(id=>{
+    $(id).classList.toggle('hidden',id!==page);
+  });
+
+  if(page==='statistics')renderStats();
+}
+
+function addStat(name,value){
+  const row=document.createElement('div');
+  row.className='stat';
+
+  const a=document.createElement('span');
+  const b=document.createElement('strong');
+
+  a.textContent=name;
+  b.textContent=value;
+
+  row.append(a,b);
+  $('stats').appendChild(row);
+}
+
+function renderStats(){
+  const period=Number($('period').value);
+  const last=Math.min(29,Math.max(0,
+    Math.round(
+      (new Date(localDate(new Date())+'T12:00:00')
+      -new Date(start+'T12:00:00'))/86400000
+    )
+  ));
+
+  const first=period===30?0:Math.max(0,last-6);
+  const rows=[];
+
+  for(let i=first;i<=last;i++){
+    const entry=entries[dateForDay(i)];
+    if(entry)rows.push(entry);
+  }
+
+  $('stats').replaceChildren();
+
+  addStat('Заполнено дней',rows.length);
+
+  const ratings=rows
+    .map(r=>Number(r.answers?.rating))
+    .filter(n=>n>=1&&n<=10);
+
+  const average=ratings.length
+    ?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1)
+    :'—';
+
+  addStat('Средняя оценка отношений',average+' / 10');
+
+  categories.forEach((name,i)=>{
+    const total=rows.reduce((sum,row)=>{
+      return sum+Number(row.answers?.categories?.[i]?.count||0);
+    },0);
+
+    addStat(name,total);
+  });
+
+  drawMood(first,last);
+}
+
+function drawMood(first,last){
+  const canvas=$('moodChart');
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width;
+  const h=canvas.height;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.font='11px Arial';
+
+  for(let i=1;i<=5;i++){
+    const y=h-25-(i-1)*(h-45)/4;
+
+    ctx.strokeStyle='#eed6df';
+    ctx.beginPath();
+    ctx.moveTo(25,y);
+    ctx.lineTo(w-10,y);
+    ctx.stroke();
+
+    ctx.fillStyle='#95536b';
+    ctx.fillText(i,5,y+4);
+  }
+
+  ctx.strokeStyle='#c96e90';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+
+  let connected=false;
+  const points=[];
+
+  for(let i=first;i<=last;i++){
+    const entry=entries[dateForDay(i)];
+
+    if(!entry||!entry.mood){
+      connected=false;
+      continue;
+    }
+
+    const x=25+(i-first)*(w-40)/Math.max(1,last-first);
+    const y=h-25-(entry.mood-1)*(h-45)/4;
+
+    if(connected)ctx.lineTo(x,y);
+    else ctx.moveTo(x,y);
+
+    connected=true;
+    points.push({x,y});
+  }
+
+  ctx.stroke();
+
+  points.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,4,0,Math.PI*2);
+    ctx.fillStyle='#c96e90';
+    ctx.fill();
+  });
+}
+
+async function saveConsent(){
+  const {error}=await db.rpc(
+    'set_diary_consent',
+    {p_consent:$('consent').checked}
+  );
+
+  $('sharedResults').textContent=error
+    ?error.message
+    :'Настройки согласия сохранены ♡';
+}
+
+async function loadShared(){
+  $('sharedResults').textContent='Загрузка...';
+
+  const {data,error}=await db.rpc(
+    'get_shared_summaries'
+  );
+
+  if(error){
+    $('sharedResults').textContent=error.message;
+    return;
+  }
+
+  $('sharedResults').replaceChildren();
+
+  if(!data||!data.length){
+    $('sharedResults').textContent=
+      'Пока нет доступных совместных результатов.';
+    return;
+  }
+
+  const pre=document.createElement('pre');
+  pre.style.whiteSpace='pre-wrap';
+  pre.style.overflowWrap='anywhere';
+  pre.textContent=JSON.stringify(data,null,2);
+
+  $('sharedResults').appendChild(pre);
+}
+
+restoreSession();
+</script>
+</body>
+</html>
